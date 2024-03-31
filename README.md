@@ -145,3 +145,95 @@ SELECT
 	TRIM(SUBSTRING(name, POSITION(' ' in name))) AS trimmed_last_name
 	FROM users;
 ```
+
+
+# Funciones agregadas - agrupaciones y ordenamiento
+
+
+## BETWEEN
+
+Permite hacer el filtro en un rango de valores especificado.
+
+```sql
+SELECT first_name, last_name, followers
+	FROM users
+	-- WHERE followers >= 4600 AND followers <= 4700
+	WHERE followers BETWEEN 4600 AND 4700;
+```
+
+
+## ORDER BY
+
+Permite hacer el ordenamiento basado en una columna de forma ascendente o descendente.
+
+```sql
+SELECT first_name, last_name, followers
+	FROM users
+	WHERE followers BETWEEN 4600 AND 4700
+	ORDER BY followers ASC;
+```
+
+
+## Funciones agregadas
+
+### COUNT
+Nos retorna la cantidad de registros que cumplen con nuestra consulta.
+
+```sql
+SELECT COUNT(*) AS total_users
+	FROM users;
+```
+
+### MIN
+Nos retorna el valor mínimo de una columna en una tabla.
+
+```sql
+SELECT MIN(followers) AS min_followers
+	FROM users;
+```
+
+### MAX
+Nos retorna el valor máximo de una columna en una tabla.
+
+```sql
+SELECT MAX(followers) AS max_followers
+	FROM users;
+```
+
+### AVG
+Calcula el promedio de los valores en una columna de una tabla.
+
+```sql
+SELECT AVG(followers) AS avg_followers
+	FROM users;
+```
+
+### SUM
+Suma todos los valores de una columna.
+
+```sql
+SELECT SUM(followers) AS sum_followers, SUM(followers) / COUNT(*) AS avg_manual
+	FROM users;
+```
+
+### ROUND
+Redondea un valor decimal y lo transforma en un entero.
+
+```sql
+SELECT ROUND(AVG(followers)) AS avg_followers
+	FROM users;
+```
+
+
+## GROUP BY
+
+Permite agrupar los resultados de un query por columnas.
+
+```sql
+SELECT COUNT(*), followers
+	FROM users
+	-- WHERE followers BETWEEN 4500 AND 4999
+	WHERE followers = 4 OR followers = 4999
+	GROUP BY followers
+	ORDER BY followers DESC;
+```
