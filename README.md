@@ -10,6 +10,51 @@ Son parecidas a una hoja de Excel, tienen columnas, valores, tipos de datos y ti
 Almacenan la información en objetos que suelen ser llamados documentos, y colecciones que agrupan dichos documentos. Este tipo de información luce similar a los objetos JSON.
 
 
+# Terminología
+
+## DDL
+
+Sus siglas significan Data Definition Language, e incluye todo lo que sea Create, Alter, Drop y Truncate.
+
+
+## DML
+
+Sus siglas significan Data Manipulation Languate, e incluye todo lo que sea Insert, Delete y Update.
+
+
+## TCL
+
+Sus siglas significan Transaction Control Language, e incluye los Commit y Rollback.
+
+
+## DQL
+
+Sus siglas significan Data Query Language e incluye el Select.
+
+
+## Funciones agregadas
+
+- Count.
+- Sum.
+- Max.
+- Min.
+- Group By.
+- Having.
+- Order By.
+
+
+## Filtrando data
+
+- Like.
+- In.
+- Is Null.
+- Is Not Null.
+- Where.
+- And.
+- Or.
+- Between.
+
+
 # Comandos básicos
 
 ## Crear tabla
@@ -44,6 +89,16 @@ UPDATE users
 SELECT *
 	FROM users
 	WHERE nombre = 'Juan David';
+
+-- Estructura general
+SELECT distinct *, campos, alias, funciones
+	WHERE Condición, condiciones, and, or, in, like
+	JOINS
+	GROUP BY Campo agrupador, ALL
+	HAVING Condición
+	ORDER BY Expresión, ASC, DESC
+	LIMIT Valor, ALL
+	OFFSET Punto de inicio
 ```
 
 
@@ -236,4 +291,49 @@ SELECT COUNT(*), followers
 	WHERE followers = 4 OR followers = 4999
 	GROUP BY followers
 	ORDER BY followers DESC;
+```
+
+
+## HAVING
+
+Son condiciones que se ponen usualmente a las funciones agregadas.
+
+```sql
+SELECT COUNT(*) AS total, country
+	FROM users
+	GROUP BY country
+	HAVING COUNT(*) BETWEEN 2 AND 5
+	ORDER BY COUNT(*) DESC;
+
+SELECT COUNT(*), SUBSTRING(email, POSITION('@' in email) + 1) AS domain
+	FROM users
+	GROUP BY SUBSTRING(email, POSITION('@' in email) + 1)
+	HAVING COUNT(*) > 1
+	ORDER BY SUBSTRING(email, POSITION('@' in email) + 1) ASC;
+```
+
+
+## DISTINCT
+
+Permite obtener los datos únicos de una columna.
+
+```sql
+SELECT DISTINCT country
+	FROM users;
+```
+
+
+## SUBQUERIES
+
+Nos permite sacar datos de consultas de otra tabla.
+
+```sql
+SELECT domain, total
+	FROM (
+		SELECT COUNT(*) AS total, SUBSTRING(email, POSITION('@' in email) + 1) AS domain
+			FROM users
+			GROUP BY SUBSTRING(email, POSITION('@' in email) + 1)
+			HAVING COUNT(*) > 1
+			ORDER BY SUBSTRING(email, POSITION('@' in email) + 1) ASC
+	) AS email_domains;
 ```
