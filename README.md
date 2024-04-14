@@ -337,3 +337,130 @@ SELECT domain, total
 			ORDER BY SUBSTRING(email, POSITION('@' in email) + 1) ASC
 	) AS email_domains;
 ```
+
+
+# Intermedio - Relaciones, Llaves y Constraints
+
+## Relaciones
+
+- **Uno a Uno** - One to One.
+- **Uno a muchos** - One to many.
+- **Relaciones a si mismas** - Self joining relationships
+- **Muchos a Muchos** - Many to Many.
+
+
+## Llaves
+
+Son recomendadas para hacer las relaciones con las tablas de nuestra base de datos. Esto garantiza la integridad de los datos.
+
+Hay varios tipos de llaves:
+
+- **Primary Key:** Identifica un registro de forma única. Una tabla puede tener varios identificadores únicos. La llave primaria está basada en los requerimientos.
+- **Super Key:** Es un conjunto de atributos que puede identificar de forma única. Es un superconjunto de una clave candidata.
+- **Canditate Key:** Un atributo o conjunto de ellos que identifican de forma única. Menos la llave primario, los demás se consideran claves candidatas.
+- **Foreign Key:** Llaves foráneas son usadas para apuntar a la llave primaria de otra tabla. Por ejemplo al tener una columna department_id en 2 tablas, ambas deben de ser del mismo tipo de datos y longitud.
+- **Composite Key:** Cuando una clave primaria consta de más de un atributo, se conoce como una clave compuesta.
+
+### Primary Key
+```sql
+ALTER TABLE country
+	ADD PRIMARY KEY(code);
+```
+
+### Constraint - Check
+Nos permite colocar restricciones de data en nuestras columnas
+
+```sql
+ALTER TABLE country
+	ADD CHECK(
+		surfacearea >= 0
+	);
+
+ALTER TABLE country
+	ADD CHECK(
+		continent = 'Asia' OR 
+		continent = 'South America' OR
+		continent = 'North America' OR
+		continent = 'Oceania' OR
+		continent = 'Antarctica' OR
+		continent = 'Africa' OR
+		continent = 'Europe'
+	);
+
+ALTER TABLE country
+	ADD CHECK(
+		continent = 'Asia'::text OR 
+		continent = 'South America'::text OR
+		continent = 'North America'::text OR
+		continent = 'Oceania'::text OR
+		continent = 'Antarctica'::text OR
+		continent = 'Africa'::text OR
+		continent = 'Europe'::text
+	);
+```
+
+Si queremos agregar un nuevo CHECK a alguno existente podemos borrar el check y volverlo a crear:
+
+```sql
+-- Eliminar constraint
+ALTER TABLE country
+	DROP CONSTRAINT "country_continent_check";
+
+ALTER TABLE country
+	ADD CHECK(
+		continent = 'Asia'::text OR 
+		continent = 'South America'::text OR
+		continent = 'North America'::text OR
+		continent = 'Central America'::text OR
+		continent = 'Oceania'::text OR
+		continent = 'Antarctica'::text OR
+		continent = 'Africa'::text OR
+		continent = 'Europe'::text
+	);
+```
+
+### Foreign Keys
+```sql
+ALTER TABLE city
+	ADD CONSTRAINT fk_country_code
+	FOREIGN KEY (countrycode)
+	REFERENCES country(code);
+```
+
+
+## Índices
+
+Le dice a la base de datos que se vaya preparando porque se van a hacer consultas basadas en dicho índice. Nos ayudan a mejorar la velocidad de las consultas de nuestras bases de datos.
+
+```sql
+-- Índice único
+CREATE UNIQUE INDEX "unique_country_name" ON country(
+	name
+);
+
+-- Índice
+CREATE INDEX "country_continent" ON country(
+	continent
+);
+
+-- Índice compuesto
+CREATE UNIQUE INDEX "unique_name_countrycode_district" ON city(
+	name, countrycode, district
+);
+```
+
+
+## ON DELETE - CASCADE
+
+Esto habilita la eliminación de datos conectados a alguna tabla cuando se borra algún registro.
+
+```sql
+ALTER TABLE city
+	DROP CONSTRAINT fk_country_code;
+
+ALTER TABLE city
+	ADD CONSTRAINT fk_country_code
+	FOREIGN KEY (countrycode)
+	REFERENCES country(code)
+	ON DELETE CASCADE;
+```
