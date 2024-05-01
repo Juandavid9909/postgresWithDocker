@@ -464,3 +464,62 @@ ALTER TABLE city
 	REFERENCES country(code)
 	ON DELETE CASCADE;
 ```
+
+
+# Separación de data en otras tablas
+
+## Insertar datos utilizando un query SELECT
+
+```sql
+INSERT INTO continent(name)
+	SELECT DISTINCT continent
+		FROM country
+		ORDER BY continent ASC;
+
+INSERT INTO country_back
+	SELECT *
+		FROM country;
+```
+
+
+## Crear una copia de una tabla (backup)
+
+Se puede generar el Script con nuestra interfaz de administración de base de datos y luego crear una tabla copia, y después insertar la información tal como lo vimos en la anterior sección.
+
+Luego para hacer una actualización masiva utilizando un subquery podemos hacer algo como lo siguiente:
+
+```sql
+UPDATE country a
+	SET continent = (SELECT code FROM continent b WHERE b.name = a.continent);
+```
+
+
+## Cambiar tipo de dato de columna para crear una llave foránea con columna existente
+
+```sql
+ALTER TABLE country
+	ALTER COLUMN continent TYPE int4
+	USING continent::integer;
+
+-- Otras alternativas para convertir columnas de tipo text a integer
+ALTER TABLE country
+	ALTER COLUMN continent TYPE int4
+	USING CAST(continent AS integer)::integer;
+
+ALTER TABLE country
+	ALTER COLUMN continent TYPE int4
+	USING continent / 1;
+```
+
+
+## Crear tabla con auto incrementable automáticamente
+
+```sql
+CREATE SEQUENCE IF NOT EXISTS language_code_seq;
+
+CREATE TABLE language(
+	code int4 NOT NULL DEFAULT nextval('language_code_seq'::regclass),
+	name text NOT NULL,
+	PRIMARY KEY(code)
+);
+```
