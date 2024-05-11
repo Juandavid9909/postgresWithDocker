@@ -523,3 +523,116 @@ CREATE TABLE language(
 	PRIMARY KEY(code)
 );
 ```
+
+
+# Uniones
+
+## Cláusula UNION
+
+Nos permite unir dos o más consultas, es importante tener claro que las consultas deben tener el mismo número de columnas para que no se produzca un error. Además, el orden de las columnas deben ser iguales para que no se presente un error, las uniones se hacen normalmente para 2 consultas en la misma tabla.
+
+```sql
+SELECT *
+	FROM continent
+	WHERE name LIKE '%America%'
+UNION
+SELECT *
+	FROM continent
+	WHERE code in (3, 5)
+	ORDER BY name;
+```
+
+
+## Unión de tablas con WHERE
+
+Podemos hacer uniones (simular JOINs) utilizando varias tablas en el FROM y configurando las restricciones en el WHERE.
+
+```sql
+SELECT a.name AS country, b.name AS continent
+	FROM country a, continent b
+	WHERE a.continent = b.code
+	ORDER BY a.name asc;
+```
+
+
+## INNER JOIN
+
+```sql
+SELECT a.name AS country, b.name AS continent
+	FROM country a
+	INNER JOIN continent b
+		ON a.continent = b.code
+	ORDER BY a.name ASC;
+```
+
+
+## Alterar secuencias de autoincrementables
+
+Si queremos que se devuelva el número de la secuencia de una columna autoincrementable podemos hacer lo siguiente:
+
+```sql
+ALTER SEQUENCE continent_code_seq RESTART with 10;
+```
+
+
+## FULL OUTER JOIN
+
+Este tipo de JOIN nos permite obtener todos los registros que se encuentren en ambas tablas, independientemente de si hay relación o no entre ellas.
+
+```sql
+SELECT a.name AS country, a.continent AS continentCode, b.name AS continentName
+	FROM country a
+	FULL OUTER JOIN continent b
+		ON a.continent = b.code
+	ORDER BY a.name;
+```
+
+
+## RIGHT OUTER JOIN
+
+Esto traerá los datos de la tabla B que no tienen ningún tipo de relación con alguno de los datos de la tabla A.
+
+```sql
+SELECT a.name AS country, a.continent AS continentCode, b.name AS continentName
+	FROM country a
+	RIGHT JOIN continent b
+		ON a.continent = b.code
+	WHERE a.continent IS NULL
+	ORDER BY b.name;
+```
+
+
+## Aggregations + JOINS
+
+```sql
+SELECT COUNT(*), b.name AS continent
+	FROM country a
+	INNER JOIN continent b
+		ON a.continent = b.code
+	GROUP BY b.name
+	ORDER BY COUNT(*) ASC;
+
+-- Ejemplo con JOIN
+SELECT COUNT(a.*), b.name AS continent
+	FROM country a
+	FULL OUTER JOIN continent b
+		ON a.continent = b.code
+	GROUP BY b.name
+	ORDER BY COUNT(a.*) ASC;
+
+-- Ejemplo con UNION
+(SELECT COUNT(*) AS count, b.name
+	FROM country a
+	INNER JOIN continent b
+		ON a.continent = b.code
+	GROUP BY b.name
+	ORDER BY COUNT(*) ASC)
+UNION
+(SELECT 0 AS count, b.name
+	FROM country a
+	RIGHT JOIN continent b
+		ON a.continent = b.code
+	WHERE a.continent IS NULL
+	GROUP BY b.name)
+ORDER BY count;
+```
