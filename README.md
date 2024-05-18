@@ -654,3 +654,88 @@ SELECT COUNT(*), continent FROM (
 ) AS totales
 GROUP BY continent;
 ```
+
+
+# Fechas, intervalos y funciones
+
+## Funciones básicas de fechas
+
+Si se quiere ver más detalles de las funciones básicas de fechas se pueden encontrar en el siguiente [link](https://www.postgresql.org/docs/8.1/functions-datetime.html).
+
+```sql
+-- Obtener la fecha actual (con hora) de la BD
+SELECT NOW();
+
+-- Obtener la fecha actual
+SELECT CURRENT_DATE;
+
+-- Obtener la hora actual
+SELECT CURRENT_TIME;
+
+-- Obtener parte de la fecha y hora actual
+SELECT DATE_PART('hours', NOW()) AS hours;
+SELECT DATE_PART('minutes', NOW()) AS minutes;
+SELECT DATE_PART('seconds', NOW()) AS seconds;
+SELECT DATE_PART('days', NOW()) AS days;
+SELECT DATE_PART('months', NOW()) AS months;
+SELECT DATE_PART('years', NOW()) AS years;
+```
+
+
+## Consultas sobre fechas
+
+```sql
+-- Filtrar con fechas en cláusula WHERE
+SELECT *
+	FROM employees
+	WHERE hire_date > '1998-02-05'
+	ORDER BY hire_date ASC;
+
+-- O esta otra alternativa
+SELECT *
+	FROM employees
+	WHERE hire_date > DATE('1998-02-05')
+	ORDER BY hire_date ASC;
+
+-- Obtener la fecha más alta
+SELECT MAX(hire_date) AS mas_nuevo
+	FROM employees;
+
+-- Obtener a fecha más baja
+SELECT MIN(hire_date) AS mas_nuevo
+	FROM employees;
+
+-- Filtros con BETWEEN
+SELECT *
+	FROM employees
+	WHERE hire_date BETWEEN '1999-01-01' AND '2000-01-04'
+	ORDER BY hire_date DESC;
+```
+
+
+## Intérvalos
+
+```sql
+-- Sumar días en fechas
+SELECT MAX(hire_date) + 1 AS mas_nuevo
+	FROM employees;
+
+-- Otra opción (más eficaz)
+SELECT MAX(hire_date), MAX(hire_date) + INTERVAL '1 days'
+	FROM employees;
+
+-- Intérvalos para otros datos
+SELECT MAX(hire_date),
+	MAX(hire_date) + INTERVAL '1 days' AS days,
+	MAX(hire_date) + INTERVAL '1 month' AS months,
+	MAX(hire_date) + INTERVAL '1 year' AS years,
+	MAX(hire_date) + INTERVAL '1.1 year' AS one_year_one_month,
+	MAX(hire_date) + INTERVAL '1.1 year' + INTERVAL '1 day' AS one_year_one_month_one_day
+	FROM employees;
+
+-- Otra forma de agregar tiempo a las fechas
+SELECT DATE_PART('year', NOW()),
+	MAKE_INTERVAL(YEARS := DATE_PART('year', NOW())::integer)
+	max(hire_date) + MAKE_INTERVAL(YEARS := 23)
+	FROM employees;
+```
