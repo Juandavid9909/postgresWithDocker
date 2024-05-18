@@ -636,3 +636,21 @@ UNION
 	GROUP BY b.name)
 ORDER BY count;
 ```
+
+
+## Múltiples JOINS con agrupaciones
+
+```sql
+SELECT COUNT(*), continent FROM (
+	SELECT DISTINCT d.name, c.name AS continent
+		FROM countrylanguage a
+		INNER JOIN country b
+			ON a.countrycode = b.code
+		INNER JOIN continent c
+			ON b.continent = c.code
+		INNER JOIN language d
+			ON a.languagecode = d.code
+		WHERE a.isofficial IS TRUE
+) AS totales
+GROUP BY continent;
+```
