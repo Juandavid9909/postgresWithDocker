@@ -739,3 +739,39 @@ SELECT DATE_PART('year', NOW()),
 	max(hire_date) + MAKE_INTERVAL(YEARS := 23)
 	FROM employees;
 ```
+
+
+## Diferencia entre fechas y actualizaciones
+
+```sql
+-- Diferencia en años
+SELECT hire_date,
+	MAKE_INTERVAL(YEARS := 2024 - EXTRACT(YEARS FROM hire_date)::integer) AS manual,
+	MAKE_INTERVAL(YEARS := DATE_PART('years', CURRENT_DATE)::integer - EXTRACT(YEARS FROM hire_date)::integer) AS computed
+	FROM employees
+	ORDER BY hire_date DESC;
+
+-- Sumar años en una actualización
+UPDATE employees
+	SET hire_date = hire_date + INTERVAL '24 years';
+```
+
+
+## Cláusula CASE - THEN
+
+```sql
+SELECT first_name,
+	last_name,
+	hire_date,
+	CASE
+		WHEN hire_date > NOW() - INTERVAL '1 year'
+			THEN '1 año o menos'
+		WHEN hire_date > NOW() - INTERVAL '3 year'
+			THEN '1 a 3 años'
+		WHEN hire_date > NOW() - INTERVAL '6 year'
+			THEN '3 a 6 años'
+			ELSE '+ de 6 años'
+	END AS rango_antiguedad
+	FROM employees
+	ORDER BY hire_date DESC;
+```
