@@ -1058,3 +1058,81 @@ CREATE OR REPLACE FUNCTION comment_replies(id integer)
 ```
 
 Hay que tener en cuenta que aunque le indicamos a Postgres que reemplace la función que ya existía con ese nombre, este va a duplicar o crear más funciones, por lo que tendremos que limpiar manualmente cada una de ellas si es lo que realmente queremos.
+
+
+# Buenas prácticas
+
+Es importante plantearnos estas dos preguntas:
+
+1. ¿Cuál es el objetivo de la misma?
+2. ¿Cómo usaremos la base de datos?
+
+Esto nos permitirá saber si nuestra base de datos está bien estructurada. En general una base de datos cumple con los siguientes objetivos:
+
+1. Minimizar la redundancia.
+2. Proteger la precisión.
+3. Ser accesible.
+4. Cumplir las expectativas.
+
+Y como recomendaciones podríamos tener en cuenta:
+
+1. Investigar previamente sobre diseños similares.
+2. Traiga las partes interesadas.
+3. Empápate del tema objetivo.
+
+
+## Principios y/o buenas prácticas
+
+- Mantenla simple.
+- Usa estandarización.
+- Considera futuras modificaciones.
+- Mantén la deuda técnica a raya.
+- Normalizar la data.
+- Diseña a largo plazo.
+- Crea documentación y diagramas.
+- Prueba tu diseño.
+- No uses abreviaturas (hay excepciones pero lo ideal es evitarlo).
+- Se recomienda nombres tablas en singular.
+- No re-inventes la rueda.
+- Usa lo que el motor de base de datos te ofrece.
+- Reglas, checks, llaves, indices, para evitar basura.
+- Mantén la privacidad como prioridad.
+- Nombres en inglés y evitar caracteres especiales.
+- Todo en minúscula sin espacios.
+- Mantén la base de datos en su propio servidor.
+- Mantén un modelado bajo versiones.
+- Establece el tipo apropiado y precisión adecuada.
+- No confíes en identificadores de terceros.
+- Defina las llaves foráneas y relaciones.
+- Si el esquema es muy grande, particiónalo.
+- Evita nombres reservados "user", "table", "create".
+- Los nombres de tablas y campos vivirán más que las aplicaciones.
+- Los nombres son contratos.
+- La base de datos gobierna sobre los demás.
+
+
+## Relaciones en singular
+
+Tablas, vistas y cualquier relación en singular.
+
+- Es posible tener una relación uno a uno, ¿seguiría esto siendo plural?
+- En inglés, hay palabras que no tienen forma plural, tales como "fish", "species", "series".
+- Mucho software trabaja siguiendo esta regla de singular, y se usa mejor de esa forma.
+
+
+## Nombrado explícito
+
+Evitar redundancia y lectura adicional
+
+- person_id vs id.
+- Las llaves foráneas deben de ser una combinación.
+- Índices deben de ser explícitos: person_idx_first_name_last_name.
+
+Esto permite saber qué falló cuando surge algún error (PostgreSQL genera buenos nombres automáticamente).
+
+
+## Ideas finales
+
+- Si ya hay una estructura creada que sigue otras reglas, sigamos esas reglas.
+- No mezclemos ideologías si no pensamos cambiar todo.
+- Estos pasos son útiles para empezar nuevos diseños.
