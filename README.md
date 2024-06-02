@@ -945,3 +945,116 @@ Ref:  "users"."user_id" < "user_lists"."user_id"
 Ref:  "user_lists"."user_list_id" < "user_list_entry"."user_list_id"
 Ref:  "posts"."post_id" < "user_list_entry"."post_id"
 ```
+
+
+# Funciones
+
+Hay algunas funciones por defecto en PostgreSQL que permiten por ejemplo generar un JSON como el valor de salida de una consulta.
+
+```sql
+-- Armar el JSON y retornar cada elemento en una fila
+SELECT json_build_object(
+		'user', user_id,
+		'comment', content
+	)
+	FROM comments
+	WHERE comment_parent_id = 1;
+
+-- El json_agg permite unir varios valores JSON en un arreglo
+SELECT json_agg(
+		json_build_object(
+			'user', user_id,
+			'comment', content
+		)
+	)
+	FROM comments
+	WHERE comment_parent_id = 1;
+
+-- Otro ejemplo
+SELECT a.*, (
+		SELECT json_agg(
+			json_build_object(
+				'user', b.user_id,
+				'comment', b.content
+			)
+		)
+		FROM comments b
+		WHERE b.comment_parent_id = a.comment_id
+	) AS replies
+	FROM comments a
+	WHERE comment_parent_id IS NULL;
+```
+
+Aún así podemos crear nuestras propias funciones como se ve a continuación:
+
+```sql
+CREATE OR REPLACE FUNCTION sayHello()
+	RETURNS varchar
+	AS
+	$$
+	BEGIN
+	
+		return 'Hola Mundo';
+
+	END;
+	$$
+	LANGUAGE plpgsql;
+
+-- Crear una función que recibe argumentos
+CREATE OR REPLACE FUNCTION sayHello(user_name varchar)
+	RETURNS varchar
+	AS
+	$$
+	BEGIN
+	
+		return 'Hola ' || user_name;
+
+	END;
+	$$
+	LANGUAGE plpgsql;
+
+-- Un ejemplo con declaración de variables
+CREATE OR REPLACE FUNCTION comment_replies(id integer)
+	RETURNS json
+	AS
+	$$
+	DECLARE result json;
+	
+	BEGIN
+		SELECT json_agg(
+			json_build_object(
+				'user', user_id,
+				'comment', content
+			)
+		) INTO result
+		FROM comments
+		WHERE comment_parent_id = id;
+
+		return result;
+	END;
+	$$
+	LANGUAGE plpgsql;
+
+-- Otro ejemplo
+CREATE OR REPLACE FUNCTION comment_replies(id integer)
+	RETURNS json
+	AS $function$
+	DECLARE result json;
+	
+	BEGIN
+		SELECT json_agg(
+			json_build_object(
+				'user', user_id,
+				'comment', content
+			)
+		) INTO result
+		FROM comments
+		WHERE comment_parent_id = id;
+
+		return result;
+	END;
+	$function$
+	LANGUAGE plpgsql;
+```
+
+Hay que tener en cuenta que aunque le indicamos a Postgres que reemplace la función que ya existía con ese nombre, este va a duplicar o crear más funciones, por lo que tendremos que limpiar manualmente cada una de ellas si es lo que realmente queremos.
