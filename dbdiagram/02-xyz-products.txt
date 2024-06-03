@@ -1,0 +1,85 @@
+Enum product_status {
+  in_stock
+  out_of_stock
+  running_low
+}
+
+Enum order_status {
+  placed
+  confirm
+  processed
+  complete
+}
+
+Table product {
+  id int [primary key, increment]
+  serial varchar
+  name varchar(200)
+  merchant int [ref: > merchant.id]
+  price float(8, 2)
+  status product_status
+  stock int
+
+  created_at timestamp [default: "now()"]
+}
+
+Table merchant {
+  id int [primary key, increment]
+  name varchar
+  country int [ref: > country.id]
+
+  created_at timestamp [default: "now()"]
+}
+
+Table country {
+  id int [primary key, increment]
+  name varchar
+}
+
+Table order {
+  id int [primary key, increment]
+  status order_status
+  user_id int
+
+  total float(12, 2)
+
+  created_at timestamp [default: "now()"]
+}
+
+Table order_item {
+  id int [primary key, increment]
+  order_id int [ref: > order.id]
+  product_id int [ref: > product.id]
+  quantity int
+}
+
+
+// Twitter
+Table user {
+  id int [primary key, increment]
+  name varchar(100)
+  slug varchar(50)
+  email varchar [unique]
+  bio text
+
+  created_at timestamp [default: "now()"]
+}
+
+Table tweet {
+  id int [primary key, increment]
+  content varchar(150)
+  user_id int [ref: > user.id]
+
+  created_at timestamp [default: "now()"]
+}
+
+Table follower {
+  id int [primary key, increment]
+  follower_id int [ref: > user.id]
+  followed_id int [ref: > user.id]
+
+  created_at timestamp [default: "now()"]
+}
+
+
+// AirBnB
