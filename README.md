@@ -1200,3 +1200,148 @@ ALTER VIEW comments_per_week RENAME TO posts_per_week;
 -- Renombrar vista materializada
 ALTER MATERIALIZED VIEW comments_per_week_mat RENAME TO posts_per_week_mat;
 ```
+
+
+# Common Table Expressions - CTE
+
+Nos sirven para tratar de separar queries muy complejos en pequeños queries más sencillos. Son muy parecidos a las vistas pero no crean nada en la base de datos.
+
+```sql
+WITH posts_week_2024 AS (
+	SELECT DATE_TRUNC('week'::text, posts.created_at) AS weeks,
+		    SUM(claps.counter) AS total_claps,
+		    COUNT(DISTINCT posts.post_id) AS number_of_posts,
+		    COUNT(*) AS number_of_claps
+		FROM posts
+			JOIN claps ON claps.post_id = posts.post_id
+		GROUP BY (DATE_TRUNC('week'::text, posts.created_at))
+		ORDER BY (DATE_TRUNC('week'::text, posts.created_at)) DESC
+)
+SELECT *
+	FROM posts_week_2024
+	WHERE weeks BETWEEN '2024-01-01' AND '2024-12-31' AND total_claps >= 600;
+```
+
+
+## Múltiples CTEs
+
+Si queremos generar varios CTEs podemos hacerlo en la declaración del mismo y luego utilizar INNER JOIN o subqueries para conectarlos.
+
+```sql
+WITH claps_per_post AS (
+	SELECT post_id, SUM(counter)
+		FROM claps
+		GROUP BY post_id
+), posts_from_2023 AS (
+	SELECT *
+		FROM posts
+		WHERE created_at BETWEEN '2023-01-01' AND '2023-12-31'
+)
+SELECT *
+	FROM claps_per_post
+	WHERE claps_per_post.post_id IN (
+		SELECT post_id
+			FROM posts_from_2023
+	);
+```
+
+
+## CTE recursivo
+
+Son muy útiles cuando tenemos una estructura jerárquica en nuestros datos.
+
+```sql
+-- Ejemplo números descendentes desde 5 hasta 1
+-- Nombre de la tabla en memoria
+-- Campos que vamos a tener
+WITH RECURSIVE countdown(val) AS (
+	-- Inicialización => el primer nivel, o valores iniciales
+	-- VALUES(5)
+	SELECT 5 AS val
+	UNION
+	-- Query recursivo
+	SELECT val - 1
+		FROM countdown
+		WHERE val > 1
+)
+-- Select de los campos
+SELECT *
+	FROM countdown;
+
+
+-- Ejemplo números ascendentes desde 1 hasta 10
+-- Nombre de la tabla en memoria
+-- Campos que vamos a tener
+WITH RECURSIVE counter(val) AS (
+	-- Inicialización => el primer nivel, o valores iniciales
+	-- VALUES(5)
+	SELECT 1 AS val
+	UNION
+	-- Query recursivo
+	SELECT val + 1
+		FROM counter
+		WHERE val < 10
+)
+-- Select de los campos
+SELECT *
+	FROM counter;
+
+
+-- Ejemplo tabla de multiplicar
+WITH RECURSIVE multiplication_table(base, val, result) AS (
+	SELECT 5 AS base, 1 AS val, 5 AS result
+	UNION
+	SELECT 5 AS base, val + 1, (val + 1) * base
+		FROM multiplication_table
+		WHERE val < 10
+)
+SELECT *
+	FROM multiplication_table;
+
+
+-- Otro ejemplo de tabla de multiplicar con VALUES (otra forma de inicializar los datos)
+WITH RECURSIVE multiplication_table(base, val, result) AS (
+	VALUES(5, 1, 5)
+	UNION
+	SELECT 5 AS base, val + 1, (val + 1) * base
+		FROM multiplication_table
+		WHERE val < 20
+)
+SELECT *
+	FROM multiplication_table;
+
+
+-- Ejemplo de la vida real con CTE recursivos
+WITH RECURSIVE bosses(id, name, reports_to, depth) AS (
+	SELECT id, name, reports_to, 1 AS depth
+		FROM employees
+		WHERE id = 1
+	UNION
+	SELECT employees.id, employees.name, employees.reports_to, depth + 1
+		FROM employees
+		INNER JOIN bosses
+			ON bosses.id = employees.reports_to
+		WHERE depth < 10
+)
+SELECT bosses.*, employees.name AS reports_to_name
+	FROM bosses
+	LEFT JOIN employees ON employees.id = bosses.reports_to
+	ORDER BY depth;
+
+
+-- Ejemplo de queries sin recursividad
+SELECT followers.*, leader.name AS leader, follower.name AS follower
+	FROM followers
+	INNER JOIN "user" leader
+		ON followers.leader_id = leader.id
+	INNER JOIN "user" follower
+		ON follower.id = followers.follower_id;
+
+SELECT *
+	FROM followers
+	WHERE leader_id IN (
+		SELECT follower_id
+			FROM followers
+			WHERE leader_id = 1
+	);
+```
