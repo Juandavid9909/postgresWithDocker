@@ -1136,3 +1136,67 @@ Esto permite saber qué falló cuando surge algún error (PostgreSQL genera buen
 - Si ya hay una estructura creada que sigue otras reglas, sigamos esas reglas.
 - No mezclemos ideologías si no pensamos cambiar todo.
 - Estos pasos son útiles para empezar nuevos diseños.
+
+
+# Vistas
+
+Las vistas nos permiten guardar queries en una tabla "temporal", esto nos permite evitar hacer queries repetitivamente ya que simplemente podemos guardarlo en una vista y simplemente hacer el SELECT a la misma.
+
+```sql
+-- Vista para obtener los comentarios truncados por semana, con el conteo de posts en cada una de esas semanas y los claps
+CREATE OR REPLACE VIEW comments_per_week AS
+	SELECT DATE_TRUNC('week', posts.created_at) AS weeks,
+			COUNT(DISTINCT posts.post_id) AS number_of_posts,
+			SUM(claps.counter) AS total_claps
+		FROM posts
+		INNER JOIN claps
+			ON claps.post_id = posts.post_id
+		GROUP BY weeks
+		ORDER BY weeks DESC;
+
+-- Llamar la vista
+SELECT *
+	FROM comments_per_week;
+
+-- Eliminar vista
+DROP VIEW comments_per_week;
+```
+
+Es ideal sólo ejecutar los queries de las vistas sin añadirles funciones, ya que esto puede ser extremadamente ineficiente al ejecutar primero el query de la vista y luego sí hacerle el calculado de las funciones a los datos del resultado de la vista.
+
+También es importante tener en cuenta que podemos editar las vistas siempre y cuando sea para agregar o modificar los resultados (columnas en la vista), pero si deseamos eliminar una de las columnas seleccionadas en el SELECT no se podrá editar la vista. Para hacer esto se debe borrar primero la vista y luego volver a crearla.
+
+
+## Vistas materializadas
+
+Es una copia de una vista en memoria. Lo crea como una tabla en nuestra base de datos, esto permite evitar que se hagan las relaciones, conteos y demás ya que la información queda guardada una vez es cargada y ejecutada por primera vez la vista. Esto quiere decir que los datos estarán preprocesados cuando llamemos la vista.
+
+Con esto tenemos un problema y es que la data no se actualiza en tiempo real, sino que toca decirle a la base de datos que actualice los datos específicamente, porque sino podremos tener siempre nuestra base de datos desactualizada. Esto se puede programar para generar dichas actualizaciones de información.
+
+```sql
+-- Crear vista materializada
+CREATE MATERIALIZED VIEW comments_per_week_mat AS
+	SELECT DATE_TRUNC('week', posts.created_at) AS weeks,
+			SUM(claps.counter) AS total_claps,
+			COUNT(DISTINCT posts.post_id) AS number_of_posts,
+			COUNT(*) AS number_of_claps
+		FROM posts
+		INNER JOIN claps
+			ON claps.post_id = posts.post_id
+		GROUP BY weeks
+		ORDER BY weeks DESC;
+
+-- Actualizar datos de una vista materializada
+REFRESH MATERIALIZED VIEW comments_per_week_mat;
+```
+
+
+## Actualizar los nombres de vistas y vistas materializadas
+
+```sql
+-- Renombrar vista
+ALTER VIEW comments_per_week RENAME TO posts_per_week;
+
+-- Renombrar vista materializada
+ALTER MATERIALIZED VIEW comments_per_week_mat RENAME TO posts_per_week_mat;
+```
