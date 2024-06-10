@@ -1345,3 +1345,227 @@ SELECT *
 			WHERE leader_id = 1
 	);
 ```
+
+
+# Funciones personalizadas
+
+Esto nos permite ejecutar instrucciones fácilmente con queries ya guardados y listos para correr. El nombre que colocamos entre los símbolos $ son el scope que definimos en dicha instrucción de la función.
+
+```sql
+CREATE OR REPLACE FUNCTION greet_employee(employee_name VARCHAR)
+	RETURNS VARCHAR
+	AS $function$
+	
+		BEGIN
+		
+			RETURN 'Hola ' || employee_name;
+			
+		END;
+		
+	$function$
+	LANGUAGE plpgsql;
+
+
+-- Ejemplos de uso
+SELECT first_name, greet_employee(first_name) AS saludo
+	FROM employees;
+
+SELECT greet_employee();
+
+
+-- Función con declaración de variables
+CREATE OR REPLACE FUNCTION max_raise(empl_id int)
+	RETURNS NUMERIC(8, 2)
+	AS $max_raise_calculation$
+		
+		DECLARE
+			possible_raise NUMERIC(8, 2);
+	
+		BEGIN
+		
+			SELECT max_salary - salary INTO possible_raise
+				FROM employees
+				INNER JOIN jobs
+					ON jobs.job_id = employees.job_id
+				WHERE employee_id = empl_id;
+
+			RETURN possible_raise;
+					
+		END;
+
+	$max_raise_calculation$
+	LANGUAGE plpgsql;
+```
+
+
+## Múltiples queris y variables
+
+Muchas veces requeriremos hacer más de un query en el cuerpo de nuestras funciones y declarar varias variables con un mismo query SELECT, y esto se puede hacer con el INTO como en el ejemplo anterior, y como se visualiza en el siguiente ejemplo:
+
+```sql
+CREATE OR REPLACE FUNCTION max_raise_2(empl_id int)
+	RETURNS NUMERIC(8, 2)
+	AS $max_raise_calculation$
+		
+		DECLARE
+			employee_job_id int;
+			current_salary NUMERIC(8, 2);
+			job_max_salary NUMERIC(8, 2);
+			possible_raise NUMERIC(8, 2);
+	
+		BEGIN
+		
+			-- Tomar el puesto de trabajo y el salario
+			SELECT job_id, salary
+					INTO employee_job_id, current_salary
+				FROM employees
+				WHERE employee_id = empl_id;
+
+			-- Tomar el max salary, acorde a su job
+			SELECT max_salary INTO job_max_salary
+				FROM jobs
+				WHERE job_id = employee_job_id;
+
+			-- Cálculos
+			possible_raise = job_max_salary - current_salary;
+
+			RETURN possible_raise;
+					
+		END;
+
+	$max_raise_calculation$
+	LANGUAGE plpgsql;
+```
+
+
+## IF, THEN, ELSE, END IF
+
+En varias ocasiones requeriremos lanzar excepcioes y/o hacer validaciones, para ello existen las instrucciones IF, THEN, ELSE, END IF en PostgreSQL.
+
+```sql
+-- Ejemplo 1: Validación de valores negativos
+CREATE OR REPLACE FUNCTION max_raise_2(empl_id int)
+	RETURNS NUMERIC(8, 2)
+	AS $max_raise_calculation$
+		
+		DECLARE
+			employee_job_id int;
+			current_salary NUMERIC(8, 2);
+			job_max_salary NUMERIC(8, 2);
+			possible_raise NUMERIC(8, 2);
+	
+		BEGIN
+		
+			-- Tomar el puesto de trabajo y el salario
+			SELECT job_id, salary
+					INTO employee_job_id, current_salary
+				FROM employees
+				WHERE employee_id = empl_id;
+
+			-- Tomar el max salary, acorde a su job
+			SELECT max_salary INTO job_max_salary
+				FROM jobs
+				WHERE job_id = employee_job_id;
+
+			-- Cálculos
+			possible_raise = job_max_salary - current_salary;
+
+			IF(possible_raise < 0) THEN
+			
+				possible_raise = 0;
+			
+			END IF;
+
+			RETURN possible_raise;
+					
+		END;
+
+	$max_raise_calculation$
+	LANGUAGE plpgsql;
+
+
+-- Ejemplo 2: Lanzar excepción personalizada
+CREATE OR REPLACE FUNCTION max_raise_2(empl_id int)
+	RETURNS NUMERIC(8, 2)
+	AS $max_raise_calculation$
+		
+		DECLARE
+			employee_job_id int;
+			current_salary NUMERIC(8, 2);
+			job_max_salary NUMERIC(8, 2);
+			possible_raise NUMERIC(8, 2);
+	
+		BEGIN
+		
+			-- Tomar el puesto de trabajo y el salario
+			SELECT job_id, salary
+					INTO employee_job_id, current_salary
+				FROM employees
+				WHERE employee_id = empl_id;
+
+			-- Tomar el max salary, acorde a su job
+			SELECT max_salary INTO job_max_salary
+				FROM jobs
+				WHERE job_id = employee_job_id;
+
+			-- Cálculos
+			possible_raise = job_max_salary - current_salary;
+
+			IF(possible_raise < 0) THEN
+			
+				RAISE EXCEPTION 'Persona con salario mayor max_salary: %', empl_id;
+			
+			END IF;
+
+			RETURN possible_raise;
+					
+		END;
+
+	$max_raise_calculation$
+	LANGUAGE plpgsql;
+```
+
+
+## Rowtype
+
+Nos permite almacenar toda una fila de la base de datos en una variable para sólo declarar una variable.
+
+```sql
+CREATE OR REPLACE FUNCTION max_raise_2(empl_id int)
+	RETURNS NUMERIC(8, 2)
+	AS $max_raise_calculation$
+		
+		DECLARE
+			-- Declaración ROWTYPE
+			selected_employee employees%rowtype;
+			selected_job jobs%rowtype;
+			possible_raise NUMERIC(8, 2);
+	
+		BEGIN
+		
+			-- Tomar el puesto de trabajo y el salario y asignar valor a ROWTYPE
+			SELECT *
+				FROM employees INTO selected_employee
+				WHERE employee_id = empl_id;
+
+			-- Tomar el max salary, acorde a su job
+			SELECT *
+				FROM jobs INTO selected_job
+				WHERE job_id = selected_employee.job_id;
+
+			-- Cálculos
+			possible_raise = selected_job.max_salary - selected_employee.salary;
+
+			IF(possible_raise < 0) THEN
+			
+				RAISE EXCEPTION 'Persona con salario mayor max_salary: id: %, %', selected_employee.employee_id, selected_employee.first_name;
+			
+			END IF;
+
+			RETURN possible_raise;
+					
+		END;
+
+	$max_raise_calculation$
+	LANGUAGE plpgsql;
+```
