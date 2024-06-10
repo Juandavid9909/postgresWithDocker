@@ -1569,3 +1569,129 @@ CREATE OR REPLACE FUNCTION max_raise_2(empl_id int)
 	$max_raise_calculation$
 	LANGUAGE plpgsql;
 ```
+
+
+## Retornar tablas en funciones
+
+Podemos hacer el retorno de una tabla (varios registros con varias columnas) en nuestras funciones según sea necesario.
+
+```sql
+CREATE OR REPLACE FUNCTION country_region()
+	RETURNS TABLE(id CHARACTER(2), name VARCHAR(40), region VARCHAR(25))
+	AS $$
+	
+		BEGIN
+		
+			RETURN query
+				SELECT country_id, country_name, region_name
+					FROM countries
+					INNER JOIN regions
+						ON countries.region_id = regions.region_id;
+		
+		END;
+	
+	$$ LANGUAGE plpgsql;
+```
+
+
+## Eliminar funciones
+
+Si requerimos eliminar una función lo podemos lograr muy fácilmente ejecutando el siguiente comando:
+
+```sql
+DROP FUNCTION max_raise_2;
+```
+
+
+## Stored Procedures
+
+Son de cierta forma funciones que no necesariamente retornan data, puede simplemente procesar data, hacer cálculos y demás.
+
+```sql
+-- Crear procedimiento almacenado (no aplicará cambios dado que siempre está haciend el ROLLBACK)
+CREATE OR REPLACE PROCEDURE insert_region_proc(INT, VARCHAR)
+	AS $$
+		
+		BEGIN
+		
+			INSERT INTO regions(region_id, region_name)
+				VALUES($1, $2);
+
+			RAISE NOTICE 'Variable 1: %', $1;
+
+			ROLLBACK;
+		
+		END;
+		
+	$$ LANGUAGE plpgsql;
+
+
+-- Ejecutar procedimiento
+CALL insert_region_proc(5, 'Central America');
+```
+
+En los procedimientos almacenados podemos utilizar la instrucción ROLLBACK para decirle a PostgreSQL que si sucede algún error ejecutando nuestro procedimiento simplemente regrese los valores a su estado original antes de ejecutar el procedimiento. A su vez, el RAISE NOTICE sirve para hacer debug de nuestro procedimiento almacenado.
+
+Si en vez hacer ROLLBACK queremos que guarde los cambios que se realizan en nuestro procedimiento almacenado podemos ejecutar la instrucción COMMIT.
+
+```sql
+CREATE OR REPLACE PROCEDURE insert_region_proc(INT, VARCHAR)
+	AS $$
+		
+		BEGIN
+		
+			INSERT INTO regions(region_id, region_name)
+				VALUES($1, $2);
+
+			RAISE NOTICE 'Variable 1: %', $1;
+
+			COMMIT;
+		
+		END;
+		
+	$$ LANGUAGE plpgsql;
+
+CALL insert_region_proc(5, 'Central America');
+```
+
+
+## Insertar data con procedimientos almacenados
+
+```sql
+CREATE OR REPLACE PROCEDURE controlled_raise(percentage NUMERIC(4, 2))
+	AS $$
+		
+		DECLARE
+			real_percentage NUMERIC(8, 2);
+			total_employees INT;
+		
+		BEGIN
+		
+			real_percentage = percentage / 100;
+
+			-- Mantener el histórico
+			INSERT INTO raise_history(date, employee_id, base_salary, amount, percentage)
+				SELECT CURRENT_DATE AS "date",
+					employee_id,
+					salary,
+					max_raise(employee_id) * real_percentage AS amount,
+					percentage
+				FROM employees;
+
+			-- Impactar la tabla de empleados
+			UPDATE employees
+				SET salary = (max_raise(employee_id) * real_percentage) + salary;
+
+			COMMIT;
+
+			SELECT COUNT(*) INTO total_employees
+				FROM employees;
+
+			RAISE NOTICE 'Afectados % empleados', total_employees;
+		
+		END;
+		
+	$$ LANGUAGE plpgsql;
+
+CALL controlled_raise(10);
+```
