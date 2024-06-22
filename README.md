@@ -1695,3 +1695,114 @@ CREATE OR REPLACE PROCEDURE controlled_raise(percentage NUMERIC(4, 2))
 
 CALL controlled_raise(10);
 ```
+
+
+# Triggers + Funciones + Procedimientos
+
+Los Triggers son procesos que se ejecutan automáticamente antes o después de un INSERT, UPDATE, DELETE o TRUNCATE. Estos mismos comandos los podemos utilizar para crear nuestros Triggers e indicar en qué situaciones queremos que se ejecuten nuestros procesos.
+
+
+## Encriptar contraseñas
+
+Hay una extensión llamada **pgcrypto**, la cual nos permite encriptar contraseñas y demás directamente en PostgreSQL.
+
+```sql
+-- Instalar extensión
+CREATE EXTENSION pgcrypto;
+
+
+-- Insertar registro con encriptación
+INSERT INTO "user" (username, password)
+	VALUES(
+		'juandavid',
+		crypt('123456', gen_salt('bf'))
+	);
+
+
+-- Validar valor encriptado
+SELECT *
+	FROM "user"
+	WHERE username = 'juandavid' AND password = crypt('123456', password);
+
+
+-- Función para verificar si el usuario existe
+CREATE OR REPLACE PROCEDURE user_login(user_name VARCHAR, user_password VARCHAR)
+	AS $$
+		
+		DECLARE
+			was_found BOOLEAN;
+
+		BEGIN
+		
+			SELECT COUNT(*) INTO was_found
+				FROM "user"
+				WHERE username = user_name AND password = crypt(user_password, password);
+
+			IF(was_found = false) THEN
+			
+				INSERT INTO session_failed (username, "when")
+					VALUES(user_name, NOW());
+
+				COMMIT;
+				
+				RAISE EXCEPTION 'Usuario y contraseña no son correctos';
+			
+			END IF;
+
+			UPDATE "user" SET last_login = NOW() WHERE username = user_name;
+			
+			COMMIT;
+
+			RAISE NOTICE 'Usuario encontrado %', was_found;
+					
+		END;
+
+	$$ LANGUAGE plpgsql;
+
+-- Llamar el procedimiento almacenado
+CALL user_login('juandavid', '123456');
+```
+
+En la función que creamos se puso la instrucción COMMIT porque debemos recordar que cuando hay una excepción  Postgres hace un rollback y deja los datos como estaban, y con el COMMIT es la única forma con la que podremos indicarle que estamos seguros de hacer los cambios en la información.
+
+
+## Triggers
+
+Nosotros en algún momento querremos ejecutar una función o procedimiento cuando suceda algo específico en nuestra base de datos, bien sea antes de la creación, actualización o eliminación de un registro, o bien después de los mismos.
+
+```sql
+-- Crear función (el NEW es el valor que envía el trigger hacia la función)
+CREATE OR REPLACE FUNCTION create_session_log()
+	RETURNS TRIGGER AS $$
+	
+		BEGIN
+		
+			INSERT INTO "session" (user_id, last_login)
+				VALUES(NEW.id, NOW());
+
+			RETURN NEW;
+		
+		END;
+	
+	$$ LANGUAGE plpgsql;
+
+-- Crear el trigger (se ejecuta después de cada actualización en la tabla user)
+CREATE OR REPLACE TRIGGER create_session_trigger
+	AFTER UPDATE ON "user"
+	FOR EACH ROW
+	EXECUTE FUNCTION create_session_log();
+```
+
+
+## Trigger When
+
+Muchas veces necesitaremos ejecutar un Trigger cada que ocurra algo pero con cierta restricción, esto lo podemos hacer con el Trigger When.
+
+```sql
+-- OLD hace referencia el valor antes de la actualización, y el NEW al nuevo valor de la fila
+CREATE OR REPLACE TRIGGER create_session_trigger
+	AFTER UPDATE ON "user"
+	FOR EACH ROW
+	WHEN (OLD.last_login IS DISTINCT FROM NEW.last_login)
+	EXECUTE FUNCTION create_session_log();
+```
